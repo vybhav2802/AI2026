@@ -1,74 +1,26 @@
-import os, json, datetime, urllib.request
-from zoneinfo import ZoneInfo
+import os, sys, json, datetime, pathlib, urllib.request
 import feedparser
-
-# Sources to read every morning (you can add or remove later)
-FEEDS = [
- "https://rss.arxiv.org/rss/cs.AI",
- "https://huggingface.co/blog/feed.xml",
- "https://simonwillison.net/atom/everything/",
-]
-
-MODEL = "gemini-flash-latest"
-API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
-
-# 1. Collect fresh items
-items = []
-for url in FEEDS:
- try:
- feed = feedparser.parse(url)
- for e in feed.entries[:5]:
- items.append({
- "source": feed.feed.get("title", url),
- "title": e.get("title", ""),
- "link": e.get("link", ""),
- "summary": e.get("summary", "")[:500],
- })
- except Exception as ex:
- print("Feed failed:", url, ex)
-
-if not items:
- raise SystemExit("No feed items fetched. Check the feed links.")
-
-# 2. Ask Gemini to write a lesson + quiz
-prompt = f"""You are a friendly AI teacher. From the news items below, pick the
-single most useful topic for a beginner learning AI in 2026.
-Return ONLY JSON in this exact shape:
-{{
- "title": "...",
- "summary": "2-3 sentence overview",
- "lesson": "300-400 word plain-English lesson with one real-world example",
- "key_terms": [{{"term": "...", "meaning": "..."}}],
- "quiz": [{{"question": "...", "options": ["A","B","C","D"], "answer": "exact correct option", "why": "..."}}],
- "source_links": ["links of the items you used"]
-}}
-Include exactly 3 quiz questions.
-
-News items:
-{json.dumps(items, ensure_ascii=False)}
-"""
-
-body = {
- "contents": [{"parts": [{"text": prompt}]}],
- "generationConfig": {"responseMimeType": "application/json"},
-}
-req = urllib.request.Request(
- API_URL,
- data=json.dumps(body).encode(),
- headers={"Content-Type": "application/json",
- "x-goog-api-key": os.environ["GEMINI_API_KEY"]},
-)
-with urllib.request.urlopen(req, timeout=120) as r:
- data = json.load(r)
-
-lesson = json.loads(data["candidates"][0]["content"]["parts"][0]["text"])
-
-# 3. Save it with today's India date
-today = datetime.datetime.now(ZoneInfo("Asia/Kolkata")).strftime("%Y-%m-%d")
+sys.excepthook = lambda t, v, tb: (print("ERROR:", t.__name__, "-", v), print("Hint: 400/403 = bad API key, 404 = bad model name, 429 = rate limit, wait and retry"), print(v.read().decode()[:500]) if hasattr(v, "read") else None)
+FEEDS = ["https://huggingface.co/blog/feed.xml", "https://techcrunch.com/category/artificial-intelligence/feed/", "https://blog.google/technology/ai/rss/", "https://www.technologyreview.com/topic/artificial-intelligence/feed"]
+MODEL = os.environ.get("GEMINI_MODEL", "gemini-flash-latest")
+key = os.environ.get("GEMINI_API_KEY", "").strip()
+if not key: sys.exit("ERROR: GEMINI_API_KEY is empty. Add it in Settings > Secrets and variables > Actions (exact name).")
+print("API key found.")
+feeds = [feedparser.parse(u, agent="Mozilla/5.0 AI-Lesson-Bot") for u in FEEDS]
+for u, f in zip(FEEDS, feeds): print(u, "->", len(f.entries), "items")
+items = [f"- {e.get('title', '')}: {e.get('summary', '')[:300]}" for f in feeds for e in f.entries[:5]]
+if not items: sys.exit("ERROR: No feed items fetched. All RSS feeds failed.")
+prompt = "You are a friendly AI teacher. Using these recent AI news items, write one short beginner-friendly lesson. Reply ONLY with JSON in this shape: " + '{"title": "...", "summary": "...", "key_points": ["...", "..."], "example": "...", "quiz": [{"question": "...", "answer": "..."}]}' + "\n\n" + "\n".join(items[:20])
+body = json.dumps({"contents": [{"parts": [{"text": prompt}]}], "generationConfig": {"responseMimeType": "application/json"}}).encode()
+req = urllib.request.Request(f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent", data=body, headers={"Content-Type": "application/json", "x-goog-api-key": key})
+print("Asking Gemini (" + MODEL + ")...")
+data = json.loads(urllib.request.urlopen(req, timeout=90).read())
+fence = "`" * 3
+text = data["candidates"][0]["content"]["parts"][0]["text"].strip().removeprefix(fence + "json").removeprefix(fence).removesuffix(fence).strip()
+lesson = json.loads(text)
+if isinstance(lesson, list): lesson = lesson[0]
+today = datetime.date.today().isoformat()
 lesson["date"] = today
-os.makedirs("lessons", exist_ok=True)
-for path in (f"lessons/{today}.json", "lessons/latest.json"):
- with open(path, "w", encoding="utf-8") as f:
- json.dump(lesson, f, ensure_ascii=False, indent=2)
-
-print("Saved lesson:", lesson.get("title"))
+pathlib.Path("lessons").mkdir(exist_ok=True)
+for name in ("latest.json", f"{today}.json"): pathlib.Path("lessons", name).write_text(json.dumps(lesson, indent=2, ensure_ascii=False), encoding="utf-8")
+print("Saved lessons/latest.json and lessons/" + today + ".json")
