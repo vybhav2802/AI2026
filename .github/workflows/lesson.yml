@@ -9,7 +9,7 @@
 {"uses": "actions/checkout@v4"},
 {"uses": "actions/setup-python@v5", "with": {"python-version": "3.12"}},
 {"run": "pip install feedparser"},
-{"run": "python make_lesson.py || (echo 'Busy, retrying in 60s...' && sleep 60 && python make_lesson.py) || (echo 'Trying lighter model...' && GEMINI_MODEL=gemini-flash-lite-latest python make_lesson.py)", "env": {"GEMINI_API_KEY": "${{ secrets.GEMINI_API_KEY }}"}},
+{"run": "python make_lesson.py || (echo 'Busy, waiting 2 min...' && sleep 120 && GEMINI_MODEL=gemini-flash-lite-latest python make_lesson.py) || (echo 'Still busy, waiting 5 min...' && sleep 300 && python make_lesson.py) || (echo 'Last try in 5 min...' && sleep 300 && GEMINI_MODEL=gemini-flash-lite-latest python make_lesson.py)", "env": {"GEMINI_API_KEY": "${{ secrets.GEMINI_API_KEY }}"}},
 {"name": "Save lesson", "run": "git config user.name 'github-actions[bot]' && git config user.email '41898282+github-actions[bot]@users.noreply.github.com' && git add lessons && (git diff --staged --quiet || git commit -m 'New lesson') && git push"}
 ]
 }
