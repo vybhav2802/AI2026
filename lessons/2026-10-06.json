@@ -1,0 +1,21 @@
+{
+  "title": "Meet AI Agents: Helpful Teammates in Everyday Life",
+  "summary": "AI is evolving from simple question-and-answer chatbots into 'AI agents'—active digital helpers that can coordinate plans with friends, assist with shopping, and take real-world actions on your behalf.",
+  "key_points": [
+    "AI agents do more than write text; they help complete multi-step tasks like organizing group schedules, planning trips, or finding products.",
+    "New AI agents can join group chats to help multiple people at once, while using permission checks to keep personal data safe.",
+    "As AI takes on bigger roles, safety features such as permission requests and invisible digital watermarks are being added to maintain trust."
+  ],
+  "example": "Imagine planning a beach weekend with friends: an AI agent inside your group chat can coordinate everyone's arrival times, suggest packing lists, and draft a carpool schedule, only acting when you give it permission.",
+  "quiz": [
+    {
+      "question": "What is the primary difference between a simple chatbot and an AI agent?",
+      "answer": "An AI agent can take action and help coordinate practical tasks, rather than just answering single text questions."
+    },
+    {
+      "question": "Why do group chat agents require permission before sharing information or taking action?",
+      "answer": "To protect user privacy and make sure personal accounts and private data remain separate and secure."
+    }
+  ],
+  "date": "2026-10-06"
+}
