@@ -1,7 +1,7 @@
 name: Make AI Lesson
 
 on:
- workflow_dispatch: # runs ONLY when you click "Run workflow"
+ workflow_dispatch:
 
 permissions:
  contents: write
